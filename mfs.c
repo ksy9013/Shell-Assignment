@@ -30,6 +30,7 @@
 #include <string.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define MAX_NUM_ARGUMENTS 3
 
@@ -41,6 +42,18 @@
 #define MAX_COMMAND_SIZE 255    // The maximum command-line size
 
 #define FILENAME_SIZE 100
+
+struct __attribute__((__packed__)) DirectoryEntry{
+    char DIR_Name[11];
+    uint8_t DIR_Attr;
+    uint8_t Unused1[8];
+    uint16_t DIR_FirstClusterHigh;
+    uint8_t Unused2[4];
+    uint16_t DIR_FirstClusterLow;
+    uint32_t DIR_FileSize;
+};
+
+struct DirectoryEntry dir[16];
 
 bool openFile(char token[FILENAME_SIZE], FILE **fp ){
   if ((*fp = fopen(token, "r")) == NULL) return false;
@@ -158,6 +171,7 @@ int main()
     else if ((strcmp(token[0], "test")) == 0 && !isClosed){
       printf("[TEST] BPB_NumFATS = %d\n", BPB_NumFATS);
     }
+
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
     || (strcmp(token[0], "get")) == 0 

@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <dirent.h>
 
 #define MAX_NUM_ARGUMENTS 3
 
@@ -83,12 +84,26 @@ void bpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB
   printf("BPB_FATSz32: dec - %d, hex - %x\n", *BPB_FATSz32, *BPB_FATSz32);
 }
 
+void run_ls()
+{
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(".");
+
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+        printf("%s\n", dir->d_name);
+        }
+        closedir(d);
+    }
+}
+
 int main()
 {
 
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
   bool isClosed = true;
-  FILE *fp;
+  FILE *fp;  
 
   char BS_OEMName[8];
   int16_t BPB_BytsPerSec;
@@ -172,19 +187,23 @@ int main()
       printf("[TEST] BPB_NumFATS = %d\n", BPB_NumFATS);
     }
 
-
-
-    else if(strcmp(token[0], "ls") == 0 && !isClosed)
+    else if(strcmp(token[0], "ls") == 0)
     {
-        fseek(fp, 0x100400, SEEK_SET);
-        fread(dir, 16, sizeof( struct DirectoryEntry),fp);
-        int i;
-        for(i = 0; i< 16; i++)
-        {
-          if(dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
-              printf("FileName: %s\n", dir[i].DIR_Name);
-        }    
+        run_ls();
     }
+
+    // else if(strcmp(token[0], "stat") == 0)
+    // {
+    //   fseek(fp, 0x100400, SEEK_SET);
+    //   fread(dir, 16, sizeof( struct DirectoryEntry),fp);
+    //   char temp[MAX_COMMAND_SIZE];
+    //   memset(temp,'\0', sizeof(temp));      
+    //   strncpy(temp, token[1], ".");    
+    //   printf("Token is now %s: \n", temp);     
+
+    // }
+    
+    
 
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
