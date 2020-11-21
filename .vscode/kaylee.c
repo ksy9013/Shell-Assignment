@@ -172,6 +172,8 @@ int main()
       printf("[TEST] BPB_NumFATS = %d\n", BPB_NumFATS);
     }
 
+
+
     else if(strcmp(token[0], "ls") == 0 && !isClosed)
     {
         fseek(fp, 0x100400, SEEK_SET);
