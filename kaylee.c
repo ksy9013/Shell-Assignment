@@ -65,12 +65,6 @@ bool openFile(char token[FILENAME_SIZE], FILE **fp ){
   return true;
 }
 
-void bpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32){
-
-
-
-}
-
 void setbpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32)
 {
   fseek(fp, 11, SEEK_SET);
