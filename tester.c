@@ -1,3 +1,6 @@
+//1001352842 Din Chan
+//1001757188 Seonyoung Kim
+
 // The MIT License (MIT)
 //
 // Copyright (c) 2020 Trevor Bakker
@@ -33,7 +36,7 @@
 #include <stdint.h>
 #include <ctype.h>
 
-#define MAX_NUM_ARGUMENTS 3
+#define MAX_NUM_ARGUMENTS 4
 
 #define WHITESPACE " \t\n" // We want to split our command line up into tokens \
                            // so we need to define what delimits our tokens.   \
@@ -86,7 +89,7 @@ int LBAToOffset(int32_t sector)
 char *editFileName(char *result, char filename[DEFAULT_SIZE])
 {
     int j, k = 0;
-    for (j = 0; j < strlen(filename); j++)
+    for (j = 0; j < 12; j++)
     {
         if (isalpha(filename[j]))
         {
@@ -208,7 +211,6 @@ int main()
                         bpb(fp, &BPB_BytsPerSec, &BPB_SecPerClus, &BPB_RsvdSecCnt, &BPB_NumFATS, &BPB_FATSz32);
                         fseek(fp, findRootDir(), SEEK_SET);
                         fread(dir, 16, sizeof(struct DirectoryEntry), fp);
-                        // printf("root cluster: %d, offset: %d\n", dir[0].DIR_FirstClusterLow, LBAToOffset(dir[0].DIR_FirstClusterLow));
                         isClosed = false;
                     }
                     else
@@ -248,7 +250,7 @@ int main()
                     if (dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
                     {
                         char filename[11], *editedFileName = malloc(sizeof(11)), *user_input = malloc(sizeof(11));
-                        memcpy(filename, dir[i].DIR_Name, 11);
+                        strcpy(filename, dir[i].DIR_Name);
 
                         editedFileName = editFileName(editedFileName, filename);
                         user_input = editFileName(user_input, token[1]);
@@ -285,28 +287,33 @@ int main()
         }
         else if (strcmp(token[0], "cd") == 0 && !isClosed)
         {
-            // printf("Current cluster: %d, Parent cluster: %d\n", dir[0].DIR_FirstClusterLow, dir[1].DIR_FirstClusterLow);
-            if (token[1] == NULL);
-            else if (strcmp(token[1], "..") == 0){
-                
+            if (token[1] == NULL)
+                ;
+            else if (strcmp(token[1], "..") == 0)
+            {
+
                 //If there are no parent directories
-                if (dir[1].DIR_FirstClusterLow == 0){
+                if (dir[1].DIR_FirstClusterLow == 0)
+                {
                     fseek(fp, findRootDir(), SEEK_SET);
                     fread(dir, 16, sizeof(struct DirectoryEntry), fp);
                     Curr_Cluster = dir[0].DIR_FirstClusterLow;
                 }
                 //root directory has parent cluster of 7216
-                else if (dir[1].DIR_FirstClusterLow == 7216) {
+                else if (dir[1].DIR_FirstClusterLow == 7216)
+                {
                     printf("You are in root directory can not go further back.\n");
                 }
-                else {
+                else
+                {
                     //converting parent cluster to offset and set it to current
                     Curr_Cluster = dir[1].DIR_FirstClusterLow;
                     fseek(fp, LBAToOffset(Curr_Cluster), SEEK_SET);
                     fread(dir, 16, sizeof(struct DirectoryEntry), fp);
                 }
             }
-            else {
+            else
+            {
                 bool foundDir = false;
                 int i;
                 for (i = 0; i < 16; i++)
@@ -315,11 +322,9 @@ int main()
                     {
                         char filename[11], *editedFileName = malloc(sizeof(11)), *user_input = malloc(sizeof(11));
                         strcpy(filename, dir[i].DIR_Name);
-                        // printf("filename = %s\n", filename);
 
                         editedFileName = editFileName(editedFileName, filename);
                         user_input = editFileName(user_input, token[1]);
-                        // printf("editedFilename = %s, user_input = %s\n", editedFileName, user_input);
                         if (strcmp(editedFileName, user_input) == 0)
                         {
                             foundDir = true;
@@ -327,16 +332,107 @@ int main()
                             fseek(fp, LBAToOffset(cluster), SEEK_SET);
                             fread(dir, 16, sizeof(struct DirectoryEntry), fp);
                             Curr_Cluster = dir[0].DIR_FirstClusterLow;
-                            // printf("Current cluster: %d, Parent cluster: %d\n", dir[0].DIR_FirstClusterLow, dir[1].DIR_FirstClusterLow);
                             break;
                         }
                     }
                 }
-                if (!foundDir){
+                if (!foundDir)
+                {
                     printf("Couldn't find directory %s\n", token[1]);
                 }
             }
         }
+        else if (strcmp(token[0], "stat") == 0 && !isClosed)
+        {
+            int i = 0;
+            bool flag = false;
+            char filename[11], *editedFileName = malloc(sizeof(11)), *user_input = malloc(sizeof(11));
+
+            if (token[1] == NULL)
+                printf("Please use right format.\n");
+
+            else
+            {
+                for (i = 0; i < 16; i++)
+                {
+                    if (dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
+                    {
+                        strcpy(filename, dir[i].DIR_Name);
+                        user_input = editFileName(user_input, token[1]);
+                        editedFileName = editFileName(editedFileName, filename);
+                        if (strcmp(user_input, editedFileName) == 0)
+                        {
+                            printf("%-20s%-15s%-20s\n", "File Attribute", "Size", "Starting Cluster Number");
+                            if (dir[i].DIR_Attr == 16)
+                            {
+                                printf("%-20d%-15d%-20d\n", dir[i].DIR_Attr, 0, dir[i].DIR_FirstClusterLow);
+                            }
+                            else
+                            {
+                                printf("%-20d%-15d%-20d\n", dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow);
+                            }
+
+                            flag = true;
+                        }
+                    }
+                }
+                if (flag == false)
+                {
+                    printf("Error: File not found\n");
+                }
+            }
+        }
+
+        else if ((strcmp(token[0], "read")) == 0 && !isClosed)
+        {
+            if (token[1] == NULL || token[2] == NULL || token[3] == NULL)
+                printf("Please use right format\n");
+            else
+            {
+                int i;
+
+                for (i = 0; i < 16; i++)
+                {
+                    if (dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
+                    {
+                        char filename[11], *editedFileName = malloc(sizeof(11)), *user_input = malloc(sizeof(11));
+                        strcpy(filename, dir[i].DIR_Name);
+                        int count = 0;
+                        editedFileName = editFileName(editedFileName, filename);
+                        user_input = editFileName(user_input, token[1]);
+                        if (strcmp(editedFileName, user_input) == 0)
+                        {
+                            int cluster = dir[i].DIR_FirstClusterLow;
+                            char temp[BPB_BytsPerSec];
+                            // int result[];
+                            int result[atoi(token[3])];
+
+                            while (cluster != -1)
+                            {
+                                fseek(fp, LBAToOffset(cluster), SEEK_SET);
+                                fread(temp, 1, BPB_BytsPerSec, fp);
+                                int k;
+                                for (k = 0; k < BPB_BytsPerSec; k++)
+                                {
+                                    result[count] = temp[k];
+                                    count++;
+                                }
+                                cluster = NextLB(cluster);
+                            }
+
+                            int j;
+                            for (j = atoi(token[2]); j < atoi(token[3]); j++)
+                            {
+                                printf("%d ", result[j]);
+                            }
+                            printf("\n");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         else if ((strcmp(token[0], "bpb")) == 0 || (strcmp(token[0], "stat")) == 0 || (strcmp(token[0], "get")) == 0 || (strcmp(token[0], "ls")) == 0 || (strcmp(token[0], "read")) == 0 || (strcmp(token[0], "cd")) == 0 || (strcmp(token[0], "info")) == 0 && isClosed)
         {
             printf("Error: File system image must be opened first.\n");
