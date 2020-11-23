@@ -42,12 +42,9 @@
 
 #define FILENAME_SIZE 100
 
-void openFile(char token[FILENAME_SIZE] ){
-  printf("Open file here...\n");
-}
-
-void closeFile(FILE *fp){
-  printf("Closing file here....\n");
+bool openFile(char token[FILENAME_SIZE], FILE *fp ){
+  if ((fp = fopen(token, "r")) == NULL) return false;
+  return true;
 }
 
 int main()
@@ -97,28 +94,23 @@ int main()
         token_count++;
     }
 
-    // Now print the tokenized input as a debug check
-    // \TODO Remove this code and replace with your FAT32 functionality
-
-    int token_index  = 0;
-    for( token_index = 0; token_index < token_count; token_index ++ ) 
-    {
-
-    }
+    //Handling commands
 
     if ((strcmp(token[0], "open")) == 0 && isClosed){
       if (token[1] == NULL) printf("command has to be: open <filename>. please try again.\n");
         else {
-          openFile(token[1]);
-          isClosed = false;
+          if (openFile(token[1], fp)){
+            isClosed = false;
+          }
+          else printf("Error: File system image not found.\n");
         }
     }
-    else if ((strcmp(token[0], "close")) == 0 && !isClosed){
-      closeFile(fp);
-      isClosed = true;
-    }
-    else if ((strcmp(token[0], "close")) == 0 && isClosed){
-      printf("Error: File system not open.\n");
+    else if ((strcmp(token[0], "close")) == 0){
+      if (!isClosed){
+        fclose(fp);
+        isClosed = true;
+      }
+      else printf("Error: File system not open.\n");
     }
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
