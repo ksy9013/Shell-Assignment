@@ -47,27 +47,27 @@ bool openFile(char token[FILENAME_SIZE], FILE **fp ){
   return true;
 }
 
-void bpb(FILE *fp, int16_t BPB_BytsPerSec, int8_t BPB_SecPerClus, int16_t BPB_RsvdSecCnt, int8_t BPB_NumFATS, int32_t BPB_FATSz32){
+void bpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32){
 
   fseek(fp, 11, SEEK_SET);
-  fread(&BPB_BytsPerSec, 2, 1, fp);
-  printf("BPB_BytsPerSec: dec - %d, hex - %x\n", BPB_BytsPerSec, BPB_BytsPerSec);
+  fread(BPB_BytsPerSec, 2, 1, fp);
+  printf("BPB_BytsPerSec: dec - %d, hex - %x\n", *BPB_BytsPerSec, *BPB_BytsPerSec);
 
   fseek(fp, 13, SEEK_SET);
-  fread(&BPB_SecPerClus, 1, 1, fp);
-  printf("BPB_SecPerClus: dec - %d, hex - %x\n", BPB_SecPerClus, BPB_SecPerClus);
+  fread(BPB_SecPerClus, 1, 1, fp);
+  printf("BPB_SecPerClus: dec - %d, hex - %x\n", *BPB_SecPerClus, *BPB_SecPerClus);
 
   fseek(fp, 14, SEEK_SET);
-  fread(&BPB_RsvdSecCnt, 2, 1, fp);
-  printf("BPB_RsvdSecCnt: dec - %d, hex - %x\n", BPB_RsvdSecCnt, BPB_RsvdSecCnt);
+  fread(BPB_RsvdSecCnt, 2, 1, fp);
+  printf("BPB_RsvdSecCnt: dec - %d, hex - %x\n", *BPB_RsvdSecCnt, *BPB_RsvdSecCnt);
 
   fseek(fp, 16, SEEK_SET);
-  fread(&BPB_NumFATS, 1, 1, fp);
-  printf("BPB_NumFATS: dec - %d, hex - %x\n", BPB_NumFATS, BPB_NumFATS);
+  fread(BPB_NumFATS, 1, 1, fp);
+  printf("BPB_NumFATS: dec - %d, hex - %x\n", *BPB_NumFATS, *BPB_NumFATS);
 
   fseek(fp, 36, SEEK_SET);
-  fread(&BPB_FATSz32, 4, 1, fp);
-  printf("BPB_FATSz32: dec - %d, hex - %x\n", BPB_FATSz32, BPB_FATSz32);
+  fread(BPB_FATSz32, 4, 1, fp);
+  printf("BPB_FATSz32: dec - %d, hex - %x\n", *BPB_FATSz32, *BPB_FATSz32);
 }
 
 int main()
@@ -153,7 +153,10 @@ int main()
       else printf("Error: File system not open.\n");
     }
     else if ((strcmp(token[0], "bpb")) == 0 && !isClosed){
-      bpb(fp, BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATS, BPB_FATSz32);
+      bpb(fp, &BPB_BytsPerSec, &BPB_SecPerClus, &BPB_RsvdSecCnt, &BPB_NumFATS, &BPB_FATSz32);
+    }
+    else if ((strcmp(token[0], "test")) == 0 && !isClosed){
+      printf("[TEST] BPB_NumFATS = %d\n", BPB_NumFATS);
     }
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
