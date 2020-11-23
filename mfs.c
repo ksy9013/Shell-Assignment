@@ -42,9 +42,13 @@
 
 #define FILENAME_SIZE 100
 
-bool openFile(char token[FILENAME_SIZE], FILE *fp ){
-  if (fopen(token, "r") == NULL) return false;
+bool openFile(char token[FILENAME_SIZE], FILE **fp ){
+  if ((*fp = fopen(token, "r")) == NULL) return false;
   return true;
+}
+
+void bpb(FILE *fp, int16_t* BPB_BytsPerSec, int8_t* BPB_SecPerClus){
+
 }
 
 int main()
@@ -53,6 +57,20 @@ int main()
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
   bool isClosed = true;
   FILE *fp;
+
+  char BS_OEMName[8];
+  int16_t BPB_BytsPerSec;
+  int8_t BPB_SecPerClus;
+  int16_t BPB_RsvdSecCnt;
+  int8_t BPB_NumFATS;
+  int16_t BPB_RootEntCnt;
+  char BS_VolLab[11];
+  int32_t BPB_FATSz32;
+  int32_t BPB_RootClus;
+
+  int32_t RootDirSectors = 0;
+  int32_t FirstDataSector = 0;
+  int32_t FirstSectorofCluster = 0;
 
   while( 1 )
   {
@@ -100,8 +118,7 @@ int main()
       if (isClosed){
         if (token[1] == NULL) printf("command has to be: open <filename>. please try again.\n");
         else {
-          if (openFile(token[1], fp)){
-            fp = fopen(token[1], "r");
+          if (openFile(token[1], &fp)){
             isClosed = false;
           }
           else printf("Error: File system image not found.\n");
@@ -115,6 +132,9 @@ int main()
         isClosed = true;
       }
       else printf("Error: File system not open.\n");
+    }
+    else if ((strcmp(token[0], "bpb")) == 0 && !isClosed){
+      
     }
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
