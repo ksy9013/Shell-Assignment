@@ -43,7 +43,7 @@
 #define FILENAME_SIZE 100
 
 bool openFile(char token[FILENAME_SIZE], FILE *fp ){
-  if ((fp = fopen(token, "r")) == NULL) return false;
+  if (fopen(token, "r") == NULL) return false;
   return true;
 }
 
@@ -96,14 +96,18 @@ int main()
 
     //Handling commands
 
-    if ((strcmp(token[0], "open")) == 0 && isClosed){
-      if (token[1] == NULL) printf("command has to be: open <filename>. please try again.\n");
+    if ((strcmp(token[0], "open")) == 0){
+      if (isClosed){
+        if (token[1] == NULL) printf("command has to be: open <filename>. please try again.\n");
         else {
           if (openFile(token[1], fp)){
+            fp = fopen(token[1], "r");
             isClosed = false;
           }
           else printf("Error: File system image not found.\n");
         }
+      }
+      else printf("Error: File system image already open.\n");
     }
     else if ((strcmp(token[0], "close")) == 0){
       if (!isClosed){
@@ -123,7 +127,7 @@ int main()
     {
       printf("Error: File system image must be opened first.\n");
     }
-    else {printf("wrong command.\n");}
+    else {printf("Error: Wrong command.\n");}
 
     free( working_root );
 
