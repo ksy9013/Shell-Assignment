@@ -120,11 +120,14 @@ int main()
     else if ((strcmp(token[0], "close")) == 0 && isClosed){
       printf("Error: File system not open.\n");
     }
-    else if ((strcmp(token[0], "bpb")) == 0 || (strcmp(token[0], "stat")) == 0 
-                                            || (strcmp(token[0], "get")) == 0 
-                                            || (strcmp(token[0], "ls")) == 0 
-                                            || (strcmp(token[0], "read")) == 0
-                                            && isClosed)
+    else if ((strcmp(token[0], "bpb")) == 0 
+    || (strcmp(token[0], "stat")) == 0 
+    || (strcmp(token[0], "get")) == 0 
+    || (strcmp(token[0], "ls")) == 0 
+    || (strcmp(token[0], "read")) == 0
+    || (strcmp(token[0], "cd")) == 0
+    || (strcmp(token[0], "info")) == 0
+    && isClosed)
     {
       printf("Error: File system image must be opened first.\n");
     }
