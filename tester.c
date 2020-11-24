@@ -44,6 +44,17 @@
 
 #define DEFAULT_SIZE 100
 
+int16_t BPB_BytsPerSec;
+int8_t BPB_SecPerClus;
+int16_t BPB_RsvdSecCnt;
+int8_t BPB_NumFATS;
+char BS_OEMName[8];
+int16_t BPB_RootEntCnt;
+char BS_VolLab[11];
+int32_t BPB_FATSz32;
+int32_t BPB_RootClus;
+FILE *fp;
+
 struct __attribute__((__packed__)) DirectoryEntry
 {
     char DIR_Name[11];
@@ -58,7 +69,8 @@ struct __attribute__((__packed__)) DirectoryEntry
 struct DirectoryEntry dir[16];
 
 //Function to move to the next cluster of the file
-int16_t NextLB(uint32_t sector, FILE *fp, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt){
+int16_t NextLB(uint32_t sector)
+{
     uint32_t FATAddress = (BPB_BytsPerSec * BPB_RsvdSecCnt) + (sector * 4);
     int16_t val;
     fseek(fp, FATAddress, SEEK_SET);
@@ -67,14 +79,16 @@ int16_t NextLB(uint32_t sector, FILE *fp, int16_t BPB_BytsPerSec, int16_t BPB_Rs
 }
 
 //Function to convert cluster to offset number
-int LBAToOffset(int32_t sector, int16_t BPB_BytsPerSec, int16_t BPB_RsvdSecCnt, int8_t BPB_NumFATS, int32_t BPB_FATSz32){
+int LBAToOffset(int32_t sector)
+{
     return ((sector - 2) * BPB_BytsPerSec) + (BPB_BytsPerSec * BPB_RsvdSecCnt) + (BPB_NumFATS * BPB_FATSz32 * BPB_BytsPerSec);
 }
 
 //Function to edit filename for comparison reasons
-char* editFileName(char *result, char filename[11]){
+char *editFileName(char *result, char filename[DEFAULT_SIZE])
+{
     int j, k = 0;
-    for (j = 0; j < 11; j++)
+    for (j = 0; j < strlen(filename); j++)
     {
         if (isalpha(filename[j]))
         {
@@ -85,70 +99,56 @@ char* editFileName(char *result, char filename[11]){
     return result;
 }
 
-//Funtion to edit user input for comparison reasons
-char* editUserInput(char *result, char user_input[DEFAULT_SIZE]){
-    int j, k = 0;
-    for (j = 0; j < strlen(user_input); j++)
-    {
-        if (isalpha(user_input[j]))
-        {
-            result[k++] = tolower(user_input[j]);
-        }
-    }
-    result[k] = '\0';
-    return result;
-}
-
 //Funtion to write into the file
-void writeFile(char* temp, char* token1, char* token2){
+void writeFile(char *temp, char *token1, char *token2)
+{
     FILE *writtenFile;
     //User specified the new name for the written file
-    if (token2 != NULL){
+    if (token2 != NULL)
+    {
         writtenFile = fopen(token2, "a+");
         fputs(temp, writtenFile);
         fclose(writtenFile);
     }
-    else {
+    else
+    {
         writtenFile = fopen(token1, "a+");
         fputs(temp, writtenFile);
         fclose(writtenFile);
     }
 }
 
-bool openFile(char token[DEFAULT_SIZE], FILE **fp){
+bool openFile(char token[DEFAULT_SIZE], FILE **fp)
+{
     if ((*fp = fopen(token, "r")) == NULL)
         return false;
     return true;
 }
 
-void bpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32){
+void bpb()
+{
     fseek(fp, 11, SEEK_SET);
-    fread(BPB_BytsPerSec, 2, 1, fp);
+    fread(&BPB_BytsPerSec, 2, 1, fp);
     fseek(fp, 13, SEEK_SET);
-    fread(BPB_SecPerClus, 1, 1, fp);
+    fread(&BPB_SecPerClus, 1, 1, fp);
     fseek(fp, 14, SEEK_SET);
-    fread(BPB_RsvdSecCnt, 2, 1, fp);
+    fread(&BPB_RsvdSecCnt, 2, 1, fp);
     fseek(fp, 16, SEEK_SET);
-    fread(BPB_NumFATS, 1, 1, fp);
+    fread(&BPB_NumFATS, 1, 1, fp);
     fseek(fp, 36, SEEK_SET);
-    fread(BPB_FATSz32, 4, 1, fp);
+    fread(&BPB_FATSz32, 4, 1, fp);
 }
 
-int main(){
+int32_t findRootDir()
+{
+    return (BPB_NumFATS * BPB_FATSz32 * BPB_BytsPerSec) + (BPB_RsvdSecCnt * BPB_BytsPerSec);
+}
+
+int main()
+{
 
     char *cmd_str = (char *)malloc(MAX_COMMAND_SIZE);
     bool isClosed = true;
-    FILE *fp;
-
-    char BS_OEMName[8];
-    int16_t BPB_BytsPerSec;
-    int8_t BPB_SecPerClus;
-    int16_t BPB_RsvdSecCnt;
-    int8_t BPB_NumFATS;
-    int16_t BPB_RootEntCnt;
-    char BS_VolLab[11];
-    int32_t BPB_FATSz32;
-    int32_t BPB_RootClus;
 
     int32_t RootDirSectors = 0;
     int32_t FirstDataSector = 0;
@@ -208,6 +208,7 @@ int main(){
                     if (openFile(token[1], &fp))
                     {
                         bpb(fp, &BPB_BytsPerSec, &BPB_SecPerClus, &BPB_RsvdSecCnt, &BPB_NumFATS, &BPB_FATSz32);
+                        RootDirSectors = findRootDir();
                         isClosed = false;
                     }
                     else
@@ -250,25 +251,40 @@ int main(){
                     if (dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
                     {
                         char filename[11], *editedFileName = malloc(sizeof(11)), *user_input = malloc(sizeof(11));
-                        //Copy the first 11 characters of DIR_Name to eliminate garbage
-                        strcpy(filename, dir[i].DIR_Name);
+                        memcpy(filename, dir[i].DIR_Name, 11);
 
                         editedFileName = editFileName(editedFileName, filename);
-                        user_input = editUserInput(user_input, token[1]);
+                        user_input = editFileName(user_input, token[1]);
                         if (strcmp(editedFileName, user_input) == 0)
                         {
                             int cluster = dir[i].DIR_FirstClusterLow;
                             char temp[BPB_BytsPerSec];
                             while (cluster != -1)
                             {
-                                fseek(fp, LBAToOffset(cluster, BPB_BytsPerSec, BPB_RsvdSecCnt, BPB_NumFATS, BPB_FATSz32), SEEK_SET);
+                                fseek(fp, LBAToOffset(cluster), SEEK_SET);
                                 fread(temp, 1, BPB_BytsPerSec, fp);
                                 writeFile(temp, token[1], token[2]);
-                                cluster = NextLB(cluster, fp, BPB_BytsPerSec, BPB_RsvdSecCnt);
+                                cluster = NextLB(cluster);
                             }
                             break;
                         }
                     }
+                }
+            }
+        }
+
+        else if (strcmp(token[0], "ls") == 0)
+        {
+            fseek(fp, 0x100400, SEEK_SET);
+            fread(dir, 16, sizeof(struct DirectoryEntry), fp);
+            int i;
+            for (i = 0; i < 16; i++)
+            {
+                if (dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
+                {
+                    char filename[11], *editedFileName = malloc(sizeof(12));
+                    memcpy(filename, dir[i].DIR_Name, 11);
+                    printf("%s\n", filename);
                 }
             }
         }
