@@ -31,6 +31,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <dirent.h>
 
 #define MAX_NUM_ARGUMENTS 3
 
@@ -42,6 +43,10 @@
 #define MAX_COMMAND_SIZE 255    // The maximum command-line size
 
 #define FILENAME_SIZE 100
+  int16_t BPB_BytsPerSec;
+  int16_t BPB_RsvdSecCnt;
+  int8_t BPB_NumFATS;
+  int32_t BPB_FATSz32;
 
 struct __attribute__((__packed__)) DirectoryEntry{
     char DIR_Name[11];
@@ -62,47 +67,60 @@ bool openFile(char token[FILENAME_SIZE], FILE **fp ){
 
 void bpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32){
 
+
+
+}
+
+void setbpb(FILE *fp, int16_t *BPB_BytsPerSec, int8_t *BPB_SecPerClus, int16_t *BPB_RsvdSecCnt, int8_t *BPB_NumFATS, int32_t *BPB_FATSz32)
+{
   fseek(fp, 11, SEEK_SET);
   fread(BPB_BytsPerSec, 2, 1, fp);
-  printf("BPB_BytsPerSec: dec - %d, hex - %x\n", *BPB_BytsPerSec, *BPB_BytsPerSec);
 
   fseek(fp, 13, SEEK_SET);
   fread(BPB_SecPerClus, 1, 1, fp);
-  printf("BPB_SecPerClus: dec - %d, hex - %x\n", *BPB_SecPerClus, *BPB_SecPerClus);
 
   fseek(fp, 14, SEEK_SET);
   fread(BPB_RsvdSecCnt, 2, 1, fp);
-  printf("BPB_RsvdSecCnt: dec - %d, hex - %x\n", *BPB_RsvdSecCnt, *BPB_RsvdSecCnt);
-
+  
   fseek(fp, 16, SEEK_SET);
   fread(BPB_NumFATS, 1, 1, fp);
-  printf("BPB_NumFATS: dec - %d, hex - %x\n", *BPB_NumFATS, *BPB_NumFATS);
 
   fseek(fp, 36, SEEK_SET);
   fread(BPB_FATSz32, 4, 1, fp);
-  printf("BPB_FATSz32: dec - %d, hex - %x\n", *BPB_FATSz32, *BPB_FATSz32);
 }
+
+int LBAToOffset(int32_t sector)
+{
+  return ((sector -2 ) * BPB_BytsPerSec) + (BPB_BytsPerSec * BPB_RsvdSecCnt) + (BPB_NumFATS * BPB_FATSz32 * BPB_BytsPerSec);
+}
+
+
+
+int32_t findRootDir()
+{
+  return (BPB_NumFATS * BPB_FATSz32 * BPB_BytsPerSec) +(BPB_RsvdSecCnt * BPB_BytsPerSec);
+}
+
+
 
 int main()
 {
 
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
   bool isClosed = true;
-  FILE *fp;
+  FILE *fp;  
 
   char BS_OEMName[8];
-  int16_t BPB_BytsPerSec;
   int8_t BPB_SecPerClus;
-  int16_t BPB_RsvdSecCnt;
-  int8_t BPB_NumFATS;
   int16_t BPB_RootEntCnt;
   char BS_VolLab[11];
-  int32_t BPB_FATSz32;
   int32_t BPB_RootClus;
 
   int32_t RootDirSectors = 0;
   int32_t FirstDataSector = 0;
   int32_t FirstSectorofCluster = 0;
+  char s[2] = " ";
+  char dot[2] = ".";
 
   while( 1 )
   {
@@ -151,6 +169,8 @@ int main()
         if (token[1] == NULL) printf("command has to be: open <filename>. please try again.\n");
         else {
           if (openFile(token[1], &fp)){
+            setbpb(fp, &BPB_BytsPerSec, &BPB_SecPerClus, &BPB_RsvdSecCnt, &BPB_NumFATS, &BPB_FATSz32);
+            RootDirSectors = findRootDir();
             isClosed = false;
           }
           else printf("Error: File system image not found.\n");
@@ -166,11 +186,69 @@ int main()
       else printf("Error: File system not open.\n");
     }
     else if ((strcmp(token[0], "bpb")) == 0 && !isClosed){
-      bpb(fp, &BPB_BytsPerSec, &BPB_SecPerClus, &BPB_RsvdSecCnt, &BPB_NumFATS, &BPB_FATSz32);
+        printf("BPB_BytsPerSec: dec - %d, hex - %x\n", BPB_BytsPerSec, BPB_BytsPerSec);
+        printf("BPB_SecPerClus: dec - %d, hex - %x\n", BPB_SecPerClus, BPB_SecPerClus);
+        printf("BPB_RsvdSecCnt: dec - %d, hex - %x\n", BPB_RsvdSecCnt, BPB_RsvdSecCnt);
+        printf("BPB_NumFATS: dec - %d, hex - %x\n", BPB_NumFATS, BPB_NumFATS);
+        printf("BPB_FATSz32: dec - %d, hex - %x\n", BPB_FATSz32, BPB_FATSz32);    
     }
     else if ((strcmp(token[0], "test")) == 0 && !isClosed){
       printf("[TEST] BPB_NumFATS = %d\n", BPB_NumFATS);
     }
+
+    else if(strcmp(token[0], "ls") == 0)
+    {
+        fseek(fp, RootDirSectors, SEEK_SET);
+        fread(dir, 16, sizeof(struct DirectoryEntry), fp);
+        char *cleanName;    
+        int i;
+
+        for(i = 0; i< 16; i++)
+        {
+            if(dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
+            {
+              cleanName = strtok(dir[i].DIR_Name, dot);
+              printf("%s\n", cleanName);
+            }
+        }
+
+    }
+
+    else if(strcmp(token[0], "stat") == 0 && !isClosed)
+    {
+      int i;
+      char *cmp, *stat_user;
+      stat_user = strtok(token[1], dot);
+      bool flag = false;
+
+      for(i = 0; i < 16; i++)
+      {
+        cmp = strtok(dir[i].DIR_Name, s);       
+        if(dir[i].DIR_Attr == 0x01 || dir[i].DIR_Attr == 0x10 || dir[i].DIR_Attr == 0x20)
+        {
+          if(strcasecmp(stat_user, cmp) == 0)
+          {
+            printf("%-20s%-15s%-20s\n","File Attribute","Size","Starting Cluster Number");
+            if(dir[i].DIR_Attr == 16)
+            {
+             printf("%-20d%-15d%-20d\n", dir[i].DIR_Attr, 0, dir[i].DIR_FirstClusterLow);             
+            }
+            else
+            {
+              printf("%-20d%-15d%-20d\n", dir[i].DIR_Attr, dir[i].DIR_FileSize, dir[i].DIR_FirstClusterLow);
+            }
+            
+            flag = true;
+          }        
+        }
+      }
+      if(flag == false)
+      {
+        printf("Error: File not found\n");
+      }
+    }
+    
+    
 
     else if ((strcmp(token[0], "bpb")) == 0 
     || (strcmp(token[0], "stat")) == 0 
