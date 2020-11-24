@@ -241,6 +241,7 @@ int main(){
                 printf("command has to be: get <filename>. please try again.\n");
             else
             {
+                //REPLACE 0x100400 with current directory
                 fseek(fp, 0x100400, SEEK_SET);
                 fread(dir, 16, sizeof(struct DirectoryEntry), fp);
                 int i;
